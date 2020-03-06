@@ -17,29 +17,32 @@ extension Publishers {
         public typealias Failure = Upstream.Failure
         
         private let upstream: Upstream
-        
-        private let subscription: Timelane.Subscription
+
+        private let name: String?
         private let filter: Set<LaneType>
         private let source: String
         private let transformValue: (Upstream.Output) -> String
+        private var nextSubscriberIndex = 0
         
         public init(upstream: Upstream,
                     name: String?,
                     filter: Set<LaneType>,
                     source: String,
                     transformValue: @escaping (Upstream.Output) -> String) {
+            self.name = name
             self.upstream = upstream
             self.filter = filter
             self.source = source
-            self.subscription = Timelane.Subscription(name: name)
             self.transformValue = transformValue
         }
         
         public func receive<S: Subscriber>(subscriber: S) where Failure == S.Failure, Output == S.Input {
             let filter = self.filter
             let source = self.source
-            let subscription = self.subscription
+            let subscription = Timelane.Subscription(name: name.map { "\($0) (s #\(nextSubscriberIndex))" })
             let transform = self.transformValue
+
+            nextSubscriberIndex += 1
             
             let sink = AnySubscriber<Upstream.Output, Upstream.Failure>(
                 receiveSubscription: { [weak self] sub in
